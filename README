@@ -33,13 +33,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 Documentation
 -------------
-http://gnit.dk/doc/openholdingstatus ?
+http://oss.dbc.dk/plone/services/open-holding-status
 
-USe Doxygen to get code documentation
+Use Doxygen to get code documentation
 
 
 Installation
 ------------
+The webservice requires [class_lib](svn://oss.dbc.dk/sync_php/php/OpenLibrary/class_lib) 
+to be installed in ./OLS_class_lib
+
 In the php.ini file:
 - make sure that always_populate_raw_post_data = On
 
@@ -48,3 +51,5 @@ Copy openholdingstatus.ini_INSTALL to openholdingstatus.ini and edit it to refle
 Copy openholdingstatus.wsdl_INSTALL to openholdingstatus.wsdl and modify
 the location of the service (at the end of the file)
 
+
+Create a symbolic link from index.php to server.php or modify your webserver to default to server.php
