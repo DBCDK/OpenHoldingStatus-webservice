@@ -269,7 +269,7 @@ class openHoldings extends webServiceServer {
       $z3950->set_authentication($z_info['authentication']);
       $z3950->set_syntax('xml');
       $z3950->set_element('B3');
-      $z3950->set_schema('1.2.840.10003.13.7.2');
+      $z3950->set_schema('1.2.840.10003.13.7.4');
       $z3950->set_start(1);
       $z3950->set_step(1);
       if (isset($holding->pid)) {
@@ -379,7 +379,9 @@ class openHoldings extends webServiceServer {
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
         if ($this->dom->loadXML($res)) {
-          $z_infos[$lib]['url'] = $this->dom->getElementsByTagName('address')->item(0)->nodeValue;
+          if ($url = $this->dom->getElementsByTagName('address')->item(0)->nodeValue) {
+            $z_infos[$lib]['url'] = $url;
+          }
           $auth = $this->dom->getElementsByTagName('userId')->item(0)->nodeValue . '/' .
                   $this->dom->getElementsByTagName('groupId')->item(0)->nodeValue . '/' .
                   $this->dom->getElementsByTagName('passWord')->item(0)->nodeValue;
