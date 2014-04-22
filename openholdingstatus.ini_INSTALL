@@ -1,16 +1,26 @@
 ; Inifile for openholdingstatus
 
 [setup]
-version = 1.1
-
 ; To close a service, set service_http_error
 ; service status - values:
 ;service_http_error = HTTP/1.0 404 Not Found
 ;service_http_error = HTTP/1.1 410 Gone
 ;service_http_error = HTTP/1.0 503 Service Unavailable
 
+;version
+version = 1.2
+
+; set only_https to accept https call only
+;only_https = 1
+
 ; wsdl for service
 wsdl = openholdingstatus.wsdl
+
+; in_house_domain may use ?ShowInfo and use create_sample form
+;in_house_domain = .dbc.dk
+
+; set to TRUE to expose the create_sample form
+;show_samples = 1
 
 ; validate
 ;validate[request] = openholdingstatus.xsd
@@ -22,7 +32,8 @@ soapAction[holdings] = holdingsRequest
 soapAction[localisations] = localisationsRequest
 
 ; prefixes and namespaces
-xmlns[] = http://oss.dbc.dk/ns/openholdingstatus
+default_namespace_prefix = ohs
+xmlns[ohs] = http://oss.dbc.dk/ns/openholdingstatus
 
 ; path to xml-examples
 xmldir = ./xml
@@ -115,6 +126,20 @@ action[localisations][] = mergePids
 action[localisations][] = callback
 action[localisations][] = outputType
 
+
+; section to dump setting online
+[showinfo]
+; make one or more line to display if ?ShowInfo is part of the url
+; __var__ will be replace by the corresponding ini-file setting - if it exists
+; __var.section__ will be replace by the corresponding ini-file setting from section [section]
+; this will only work if the user from in_house_domain - see above
+;showinfo[] = <pre>
+;showinfo[] = version:            __version.setup__
+;showinfo[] = logfile:            __logfile.setup__
+;showinfo[] = verbose:            __verbose__
+;showinfo[] = aaa_credentials:    __aaa_credentials__
+;showinfo[] = show_samples:       __show_samples__
+;showinfo[] = </pre>
 
 [howru]
 ;test[] = holdings&responderId=DK-790900&bibliographicRecordId=12343&bibliographicRecordAgencyId=DK-710100
