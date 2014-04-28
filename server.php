@@ -95,6 +95,7 @@ class openHoldings extends webServiceServer {
 
 // if more than one pid, this could be parallelized
     foreach ($pids as $pid) {
+      unset($error);
       $url = sprintf($this->config->get_value('ols_get_holdings','setup'), 
                      $this->strip_agency($param->agencyId->_value), 
                      urlencode($pid->_value));
@@ -137,23 +138,28 @@ class openHoldings extends webServiceServer {
           }
         }
         else {
-          $error = 'cannot_parse_library_answer';
+          $error = 'error_parsing_holdings_server_answer';
         }
       }
       else {
-        $error = 'no_holding_return_from_library';
+        $error = 'error_contacting_holdings_server';
         verbose::log(ERROR, 'OpenHoldings:: http code: ' . $curl_status['http_code'] .
                             ' error: "' . $curl_status['error'] .
                             '" for: ' . $curl_status['url']);
       }
       if ($error) {
         $err->pid[]->_value = $pid->_value;
-        //$err->responderId->_value = $param->agencyId->_value;
         $err->errorMessage->_value = $error;
         $lr->localisations[]->_value = $err;
         unset($err);
-        unset($error);
       }
+    }
+
+    if (empty($h_arr) && $error) {
+      unset($lr->localisations);
+      $lr->error->_value->responderId->_value = $param->agencyId->_value;
+      $lr->error->_value->errorMessage->_value = $error;
+      return $ret;
     }
 
     if ($sort_n_merge && is_array($h_arr)) {
