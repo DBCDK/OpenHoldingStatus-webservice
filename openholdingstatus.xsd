@@ -235,6 +235,8 @@ You should have received a copy of the GNU Affero General Public License along w
 			<xs:enumeration value="cannot_parse_request_order"/>
 			<xs:enumeration value="item_not_found"/>
 			<xs:enumeration value="error_searching_library"/>
+			<xs:enumeration value="error_contacting_holdings_server"/>
+			<xs:enumeration value="error_parsing_holdings_server_answer"/>
 			<xs:enumeration value="error_fetching_request_order"/>
 			<xs:enumeration value="no_holding_return_from_library"/>
 			<xs:enumeration value="no_holdings_specified_by_library"/>
