@@ -37,7 +37,7 @@ class openHoldings extends webServiceServer {
     $this->dom->preserveWhiteSpace = false;
   }
 
- /*
+ /* \brief
   * request:
   * - agencyId: Identifier of agency
   * - pid: Identifier of Open Search object
@@ -63,10 +63,10 @@ class openHoldings extends webServiceServer {
     } 
     else {
       is_array($param->pid) ? $pids = $param->pid : $pids[] = $param->pid;
-      $sort_n_merge = ($this->xs_boolean($param->mergePids->_value) && count($pids) > 1);
+      $sort_n_merge = (self::xs_boolean($param->mergePids->_value) && count($pids) > 1);
       if ($sort_n_merge) {
         $url = sprintf($this->config->get_value('agency_request_order','setup'), 
-                       $this->strip_agency($param->agencyId->_value));
+                       self::strip_agency($param->agencyId->_value));
         $res = $this->curl->get($url);
         $curl_status = $this->curl->get_status();
         if ($curl_status['http_code'] == 200) {
@@ -97,7 +97,7 @@ class openHoldings extends webServiceServer {
     foreach ($pids as $pid) {
       unset($error);
       $url = sprintf($this->config->get_value('ols_get_holdings','setup'), 
-                     $this->strip_agency($param->agencyId->_value), 
+                     self::strip_agency($param->agencyId->_value), 
                      urlencode($pid->_value));
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
@@ -192,7 +192,7 @@ class openHoldings extends webServiceServer {
   }
 
 
- /*
+ /* \brief
   * request:
   * - lookupRecord
   * - - responderId: librarycode for lookup-library
@@ -229,16 +229,16 @@ class openHoldings extends webServiceServer {
       }
       foreach ($param->lookupRecord as $holding) {
         if (!$fh = $auth_error)
-          $fh = $this->find_holding($holding->_value);
+          $fh = self::find_holding($holding->_value);
         unset($recid);
         if (is_scalar($fh)) {
-          $this->add_recid($err, $holding);
+          self::add_recid($err, $holding);
           $err->responderId->_value = $holding->_value->responderId->_value;
           $err->errorMessage->_value = $fh;
           $hr->error[]->_value = $err;
           unset($err);
         } else {
-          $this->add_recid($fh, $holding);
+          self::add_recid($fh, $holding);
           $fh->responderId->_value = $holding->_value->responderId->_value;
           $hr->responder[]->_value = $fh;
         }
@@ -248,6 +248,13 @@ class openHoldings extends webServiceServer {
     return $ret;
   }
 
+  /* -------------------------------------------------------------------------------- */
+
+  /** \brief 
+   *
+   * @param object $obj 
+   * @param object $hold
+   */
   private function add_recid(&$obj, &$hold) {
     if (isset($hold->_value->pid)) {
       $obj->pid->_value = $hold->_value->pid->_value;
@@ -257,88 +264,171 @@ class openHoldings extends webServiceServer {
     }
   }
 
+  /** \brief 
+   *
+   * @param object $param 
+   * @retval mixed
+   */
+  private function find_holding($param) {
+    $connect_info = self::find_protocol_and_address($param->responderId->_value);
+    switch ($connect_info['protocol']) {
+      case 'z3950':
+        return self::find_z3950_holding($connect_info, $param);
+        break;
+      case 'iso20775':
+        return self::find_iso20775_holding($connect_info, $param);
+        break;
+      default:
+        return 'service_not_supported_by_library';
+    }
+  }
+
  /*
   * struct lookupRecord {
   *   string responderId;
   *   string pid;
-  * - or next 2
+  * - or next
   *   string bibliographicRecordId;
   *  }
   */
-  private function find_holding($holding) {
+  private function find_z3950_holding($z_info, $param) {
     static $z3950;
-    if ($z_info = $this->find_z_url($holding->responderId->_value)) {
-      if (empty($z3950)) $z3950 = new z3950();
-      list($target, $database) = explode('/', $z_info['url'], 2);
-      $z3950->set_target($target);
-      $z3950->set_database($database);
-      $z3950->set_authentication($z_info['authentication']);
-      $z3950->set_syntax('xml');
-      $z3950->set_element('B3');
-      $z3950->set_schema('1.2.840.10003.13.7.4');
-      $z3950->set_start(1);
-      $z3950->set_step(1);
-      if (isset($holding->pid)) {
-        list($bibpart, $recid) = explode(':', $holding->pid->_value);
-        $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $recid);
-      } else {
-        $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $holding->bibliographicRecordId->_value);
-      }
-      $this->watch->start('z3950');
-      $hits = $z3950->z3950_search(5);
-      $this->watch->stop('z3950');
-      if ($z3950->get_error()) {
-        verbose::log(ERROR, 'OpenHoldings:: ' . $z_info['url'] . ' Z3950 error: ' . $z3950->get_error_string());
-        return 'error_searching_library';
-      }
-      if (!$hits)
-        return 'item_not_found';
-      $record = $z3950->z3950_record(1);
-      if (empty($record))
-        return 'no_holding_return_from_library';
-      if ($status = $this->parse_holding($record))
-        return $this->parse_status($status);
-      else
-        return 'cannot_parse_library_answer';
-    } else
-      return 'service_not_supported_by_library';
+    if (empty($z3950)) {
+      $z3950 = new z3950();
+    }
+    list($target, $database) = explode('/', $z_info['url'], 2);
+    $z3950->set_target($target);
+    $z3950->set_database($database);
+    $z3950->set_authentication($z_info['authentication']);
+    $z3950->set_syntax('xml');
+    $z3950->set_element('B3');
+    $z3950->set_schema('1.2.840.10003.13.7.4');
+    $z3950->set_start(1);
+    $z3950->set_step(1);
+    if (isset($param->pid)) {
+      list($bibpart, $recid) = explode(':', $param->pid->_value);
+      $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $recid);
+    }
+    else {
+      $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $param->bibliographicRecordId->_value);
+    }
+    $this->watch->start('z3950');
+    $hits = $z3950->z3950_search(5);
+    $this->watch->stop('z3950');
+    if ($z3950->get_error()) {
+      verbose::log(ERROR, 'OpenHoldings:: ' . $z_info['url'] . ' Z3950 error: ' . $z3950->get_error_string());
+      return 'error_searching_library';
+    }
+    if (!$hits) {
+      return 'item_not_found';
+    }
+    $record = $z3950->z3950_record(1);
+    if (empty($record)) {
+      return 'no_holding_return_from_library';
+    }
+    if ($status = self::parse_z3950_holding($record)) {
+      return self::parse_status($status);
+    }
+    else {
+      return 'cannot_parse_library_answer';
+    }
   }
 
-  /** \brief Parse status for availability
-   *
-   */
-  private function parse_status($status) {
-    if (count($status) == 1 && $status[0]['policy']) {
-      $s = &$status[0];
-      $ret->localHoldingsId->_value = $s['id'];
-      if ($s['note'])
-        $ret->note->_value = $s['note'];
-      $h_date = substr($s['date'],0,10);
-      if ($s['policy'] == 1) {
-        $ret->willLend->_value = 'true';
-        if ($h_date >= date('Y-m-d'))
-          $ret->expectedDelivery->_value = $h_date;
-      } elseif (($s['policy'] == 2))
-          $ret->willLend->_value = 'false';
-    } elseif (count($status) > 1) {
-      $ret->willLend->_value = 'true';
-      $pol = 0;
-      foreach ($status as $s)
-        if ($s['policy'] <> 1) {
-          $ret->willLend->_value = 'false';
-          break ;
-        }
-      $ret->note->_value = 'check_local_library';
-    } else 
-      $ret = 'no_holdings_specified_by_library';
+ /*
+  * struct lookupRecord {
+  *   string responderId;
+  *   string pid;
+  * - or next
+  *   string bibliographicRecordId;
+  *  }
+  */
+  private function find_iso20775_holding($info, $param) {
+    $parms = $this->config->get_value('iso20775_parameters','setup');
+    if (isset($param->pid)) {
+      list($bibpart, $recid) = explode(':', $param->pid->_value);
+    }
+    else {
+      $recid = $param->bibliographicRecordId->_value;
+    }
+    $url = $info['url'] . '?' . sprintf($parms, urlencode('rec.id=' . $recid));
+    if ($this->config->get_value('use_test_iso20775_replies','setup')) {
+      $res = self::test_iso20775_reply($recid, self::strip_agency($param->responderId->_value));
+      $curl_status['http_code'] = 200;
+    }
+    else {
+      $this->watch->start('iso20775');
+      $res = $this->curl->get($url);
+      $this->watch->stop('iso20775');
+      $curl_status = $this->curl->get_status();
+    }
+    if ($curl_status['http_code'] == 200) {
+      if ($status = self::parse_iso20775_holding($res)) {
+        return self::parse_status($status);
+        //return $status;
+      }
+      else {
+        return 'cannot_parse_library_answer';
+      }
+    } 
+    else {
+      verbose::log(ERROR, 'OpenHoldings:: http error: ' .  $curl_status['http_code'] .
+                          ' error: "' . $curl_status['error'] .
+                          '" for: ' . $curl_status['url']);
+      return 'error_searching_library';
+    }
 
-    return $ret;
   }
 
   /** \brief Parse a holding record and extract the status
    *
+   * @param string $holding - xml document
+   * @retval mixed
    */
-  private function parse_holding($holding) {
+  private function parse_iso20775_holding($holding) {
+    if ($this->dom->loadXML($holding)) {
+      foreach ($this->dom->getElementsByTagName('holding') as $item) {
+        if (!$h['fee'] = self::first_node_value($item, 'summaryPolicy/feeInformation/feeText')) {
+          $h['fee'] = self::prefix('Reason: ', self::first_node_value($item, 'summaryPolicy/feeInformation/feeStructured/feeReason'));
+          $h['fee'] .= self::prefix('Unit: ', self::first_node_value($item, 'summaryPolicy/feeInformation/feeStructured/feeUnit'));
+          $h['fee'] .= self::prefix('Amount: ', self::first_node_value($item, 'summaryPolicy/feeInformation/feeStructured/feeAmount'));
+        }
+        $h['note'] = self::first_node_value($item, 'summaryPolicy/availability/text');
+        if ($item->getElementsByTagName('holdingSimple')->length) {
+          $h['id'] = self::first_node_value($this->dom, 'resource/resourceIdentifier/value');
+          if (self::first_node_value($item, 'holdingSimple/copiesSummary/status/availableCount')) {
+            $h['policy'] = 1;
+            $h['date'] = self::first_node_value($item, 'holdingSimple/copiesSummary/status/earliestDispatchDate');
+          }
+          else {
+            $h['policy'] = 0;
+          }
+          $hold[] = $h;
+        }
+        else {
+          foreach ($item->getElementsByTagName('holdingStructured')->item(0)->getElementsByTagName('set') as $hs) {
+            foreach ($hs->getElementsByTagName('component') as $cpn) {
+              $h['id'] = self::first_node_value($cpn, 'pieceIdentifier/value');
+              $h['date'] = self::first_node_value($cpn, 'availabilityInformation/status/dateTimeAvailable');
+              $h['policy'] = self::first_node_value($cpn, 'availabilityInformation/status/availabilityStatus');
+              $hold[] = $h;
+            }
+          }
+        }
+      }
+    }
+    else {
+      return FALSE;
+    }
+    //var_dump($holding); var_dump($hold); die();
+    return $hold;
+  }
+
+  /** \brief Parse a holding record and extract the status
+   *
+   * @param string $holding - xml document
+   * @retval mixed
+   */
+  private function parse_z3950_holding($holding) {
     if ($this->dom->loadXML($holding)) {
       //echo str_replace('?', '', $holding);
       foreach ($this->dom->getElementsByTagName('bibView-11') as $item) {
@@ -368,31 +458,79 @@ class openHoldings extends webServiceServer {
 
         $hold[] = $h;
       }
-      if (empty($hold))
+      if (empty($hold)) {
         return array(array('note' => 'No holding'));
-      else
+      }
+      else {
         return $hold;
-    } else
+      }
+    }
+    else {
       return FALSE;
+    }
   }
 
-  private function find_z_url($lib) {
+  /** \brief Parse status for availability
+   *
+   * @param array $status
+   * @retval mixed
+   */
+  private function parse_status($status) {
+    if (count($status) == 1 && $status[0]['policy']) {
+      $s = &$status[0];
+      $ret->localHoldingsId->_value = $s['id'];
+      if ($s['note'])
+        $ret->note->_value = $s['note'];
+      $h_date = substr($s['date'],0,10);
+      if ($s['policy'] == 1) {
+        $ret->willLend->_value = 'true';
+        if ($h_date >= date('Y-m-d'))
+          $ret->expectedDelivery->_value = $h_date;
+      } elseif (($s['policy'] == 2))
+          $ret->willLend->_value = 'false';
+    } elseif (count($status) > 1) {
+      $ret->willLend->_value = 'true';
+      $pol = 0;
+      foreach ($status as $s)
+        if ($s['policy'] <> 1) {
+          $ret->willLend->_value = 'false';
+          break ;
+        }
+      $ret->note->_value = 'check_local_library';
+    } else 
+      $ret = 'no_holdings_specified_by_library';
+
+    return $ret;
+  }
+
+  /** \brief Get the protocol and address for a library from openAgency
+   *
+   * @param string $lib - library number
+   * @retval mixed
+   */
+  private function find_protocol_and_address($lib) {
     static $z_infos = array();
     if (empty($z_infos[$lib])) {
       $url = sprintf($this->config->get_value('agency_server_information','setup'), 
-                     $this->strip_agency($lib));
+                     self::strip_agency($lib));
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
         if ($this->dom->loadXML($res)) {
-          if ($url = $this->dom->getElementsByTagName('address')->item(0)->nodeValue) {
-            $z_infos[$lib]['url'] = $url;
-          }
-          $auth = $this->dom->getElementsByTagName('userId')->item(0)->nodeValue . '/' .
-                  $this->dom->getElementsByTagName('groupId')->item(0)->nodeValue . '/' .
-                  $this->dom->getElementsByTagName('passWord')->item(0)->nodeValue;
-          if ($auth <> '//') {
-            $z_infos[$lib]['authentication'] = $auth;
+          $z_infos[$lib]['url'] = self::first_node_value($this->dom, 'address');
+          switch ($z_infos[$lib]['protocol'] = self::first_node_value($this->dom, 'protocol')) {
+            case 'iso20775':
+              $z_infos[$lib]['password'] = self::first_node_value($this->dom, 'passWord');
+              break;
+            case 'z3950':
+              $auth = self::first_node_value($this->dom, 'userId') . '/' .
+                      self::first_node_value($this->dom, 'groupId') . '/' .
+                      self::first_node_value($this->dom, 'passWord');
+              if ($auth <> '//') {
+                $z_infos[$lib]['authentication'] = $auth;
+              }
+              break;
+            default:
           }
         }
         else {
@@ -410,27 +548,65 @@ class openHoldings extends webServiceServer {
     return $z_infos[$lib];
   }
 
+  /** \brief Return first nodeValue from a dom node
+   * 
+   * @param dom_node $domnode
+   * @param string $path - path to node like 'tagA/tagB/tagC'
+   * @retval mixed - string or FALSE
+   */
+  private function first_node_value($dom_node, $path) {
+    $tags = explode('/', $path);
+    foreach ($tags as $tag) {
+      $dom_list = $dom_node->getElementsByTagName($tag);
+      if ($dom_list->length) {
+        $dom_node = $dom_list->item(0);
+      }
+      else {
+        return NULL;
+      }
+    }
+    return $dom_node->nodeValue;
+  }
+
+  /** \brief Puts $prefix and '. ' around value if set
+   *
+   * @param string $prefix
+   * @param string $value
+   * @retval string
+   */
+  private function prefix($prefix, $value) {
+    return ($value ? $prefix . $value . '. ': $value);
+  }
+
   /** \brief
-   *  return only digits, so something like DK-710100 returns 710100
+   * @param string $id - library number or ISIL library id
+   * @retval string - return only digits, so something like DK-710100 returns 710100
    */
   private function strip_agency($id) {
     return preg_replace('/\D/', '', $id);
   }
 
-  /** \brief
-   *  return true if xs:boolean is so
+  /** \brief return true if xs:boolean is so
+   * @param string $str
+   * @retval boolean 
    */
   private function xs_boolean($str) {
     return (strtolower($str) == 'true' || $str == 1);
   }
 
-  /** \brief
-   *  return true if xs:boolean is so
+  /** \brief Helper function for sorting
+   * @param array $a
+   * @param array $b
+   * @retval boolean 
    */
   private function compare($a, $b) {
     return $a['sort'] > $b['sort'];
   }
 
+  private function test_iso20775_reply($lib, $id) {
+    require_once('examples.php');
+    return test_iso_reply($lib, $id);
+  }
 }
 
 /*
@@ -440,4 +616,4 @@ class openHoldings extends webServiceServer {
 $ws=new openHoldings();
 $ws->handle_request();
 
-?>
+

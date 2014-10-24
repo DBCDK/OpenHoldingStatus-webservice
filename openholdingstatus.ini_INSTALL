@@ -61,6 +61,9 @@ agency_request_order = http://some_open_agency.server.dk/?action=requestOrder&ag
 ; url to get server information from openAgency
 agency_server_information = http://some_open_agency.server.dk/?action=service&service=serverInformation&agencyId=%s
 
+; parameters for iso20775 sru search
+iso20775_parameters = version=1.2&operation=searchRetrieve&recordSchema=isohold&query=%s
+
 
 [aaa]
 ; aaa Authentication, Access control and Accounting
