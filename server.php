@@ -489,6 +489,7 @@ class openHoldings extends webServiceServer {
       } elseif (($s['policy'] == 2))
           $ret->willLend->_value = 'false';
     } elseif (count($status) > 1) {
+      $ret->note->_value = 'check_local_library';
       $ret->willLend->_value = 'true';
       $pol = 0;
       foreach ($status as $s)
@@ -496,7 +497,6 @@ class openHoldings extends webServiceServer {
           $ret->willLend->_value = 'false';
           break ;
         }
-      $ret->note->_value = 'check_local_library';
     } else 
       $ret = 'no_holdings_specified_by_library';
 
@@ -603,9 +603,9 @@ class openHoldings extends webServiceServer {
     return $a['sort'] > $b['sort'];
   }
 
-  private function test_iso20775_reply($lib, $id) {
+  private function test_iso20775_reply($id, $lib) {
     require_once('examples.php');
-    return test_iso_reply($lib, $id);
+    return test_iso_reply($id, $lib);
   }
 }
 
