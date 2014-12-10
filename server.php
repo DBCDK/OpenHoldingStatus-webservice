@@ -55,6 +55,9 @@ class openHoldings extends webServiceServer {
   * - - pid: Identifier of Open Search object
   * - - responderId: librarycode for lookup-library
   * - - errorMessage 
+  * 
+  * @param $param object - the request
+  * @retval object - the answer
   */
   public function localisations($param) {
     $lr = &$ret->localisationsResponse->_value;
@@ -215,6 +218,9 @@ class openHoldings extends webServiceServer {
   * - - bibliographicRecordId: requester record id 
   * - - responderId: librarycode for lookup-library
   * - - errorMessage: 
+  *
+  * @param $param object - the request
+  * @retval object - the answer
   */
   public function holdings($param) {
     $hr = &$ret->holdingsResponse->_value;
@@ -252,8 +258,8 @@ class openHoldings extends webServiceServer {
 
   /** \brief 
    *
-   * @param object $obj 
-   * @param object $hold
+   * @param $obj object
+   * @param $hold object
    */
   private function add_recid(&$obj, &$hold) {
     if (isset($hold->_value->pid)) {
@@ -266,7 +272,7 @@ class openHoldings extends webServiceServer {
 
   /** \brief 
    *
-   * @param object $param 
+   * @param $param object
    * @retval mixed
    */
   private function find_holding($param) {
@@ -283,13 +289,17 @@ class openHoldings extends webServiceServer {
     }
   }
 
- /*
+ /* /brief
   * struct lookupRecord {
   *   string responderId;
   *   string pid;
   * - or next
   *   string bibliographicRecordId;
   *  }
+  *
+  * @param $z_info array
+  * @param $param object
+  * @retval mixed
   */
   private function find_z3950_holding($z_info, $param) {
     static $z3950;
@@ -341,6 +351,10 @@ class openHoldings extends webServiceServer {
   * - or next
   *   string bibliographicRecordId;
   *  }
+  *
+  * @param $info array
+  * @param $param object
+  * @retval mixed
   */
   private function find_iso20775_holding($info, $param) {
     $parms = $this->config->get_value('iso20775_parameters','setup');
@@ -381,7 +395,7 @@ class openHoldings extends webServiceServer {
 
   /** \brief Parse a holding record and extract the status
    *
-   * @param string $holding - xml document
+   * @param $holding string - xml document
    * @retval mixed
    */
   private function parse_iso20775_holding($holding) {
@@ -425,7 +439,7 @@ class openHoldings extends webServiceServer {
 
   /** \brief Parse a holding record and extract the status
    *
-   * @param string $holding - xml document
+   * @param $holding string - xml document
    * @retval mixed
    */
   private function parse_z3950_holding($holding) {
@@ -472,7 +486,7 @@ class openHoldings extends webServiceServer {
 
   /** \brief Parse status for availability
    *
-   * @param array $status
+   * @param $status array
    * @retval mixed
    */
   private function parse_status($status) {
@@ -505,7 +519,7 @@ class openHoldings extends webServiceServer {
 
   /** \brief Get the protocol and address for a library from openAgency
    *
-   * @param string $lib - library number
+   * @param $lib string - library number
    * @retval mixed
    */
   private function find_protocol_and_address($lib) {
@@ -550,8 +564,8 @@ class openHoldings extends webServiceServer {
 
   /** \brief Return first nodeValue from a dom node
    * 
-   * @param dom_node $domnode
-   * @param string $path - path to node like 'tagA/tagB/tagC'
+   * @param $domnode DOMNode
+   * @param $path string - path to node like 'tagA/tagB/tagC'
    * @retval mixed - string or FALSE
    */
   private function first_node_value($dom_node, $path) {
@@ -570,8 +584,8 @@ class openHoldings extends webServiceServer {
 
   /** \brief Puts $prefix and '. ' around value if set
    *
-   * @param string $prefix
-   * @param string $value
+   * @param $prefix string
+   * @param $value string
    * @retval string
    */
   private function prefix($prefix, $value) {
@@ -579,7 +593,7 @@ class openHoldings extends webServiceServer {
   }
 
   /** \brief
-   * @param string $id - library number or ISIL library id
+   * @param $id string - library number or ISIL library id
    * @retval string - return only digits, so something like DK-710100 returns 710100
    */
   private function strip_agency($id) {
@@ -587,7 +601,7 @@ class openHoldings extends webServiceServer {
   }
 
   /** \brief return true if xs:boolean is so
-   * @param string $str
+   * @param $str string
    * @retval boolean 
    */
   private function xs_boolean($str) {
@@ -595,14 +609,19 @@ class openHoldings extends webServiceServer {
   }
 
   /** \brief Helper function for sorting
-   * @param array $a
-   * @param array $b
+   * @param $a array
+   * @param $b array
    * @retval boolean 
    */
   private function compare($a, $b) {
     return $a['sort'] > $b['sort'];
   }
 
+  /** \brief Helper function for test when no iso20775 host exist
+   * @param $id string
+   * @param $lib string
+   * @retval string - iso20775 xml reply 
+   */
   private function test_iso20775_reply($id, $lib) {
     require_once('examples.php');
     return test_iso_reply($id, $lib);
