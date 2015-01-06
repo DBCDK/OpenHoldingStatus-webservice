@@ -30,6 +30,7 @@ wsdl = openholdingstatus.wsdl
 ; Can be found in the wsdl but is stated here for convenience
 soapAction[holdings] = holdingsRequest
 soapAction[localisations] = localisationsRequest
+soapAction[detailedHoldings] = detailedHoldingsRequest
 
 ; prefixes and namespaces
 default_namespace_prefix = ohs
@@ -128,6 +129,15 @@ action[localisations][] = pid
 action[localisations][] = mergePids
 action[localisations][] = callback
 action[localisations][] = outputType
+
+action[detailedHholdings][authentication][] = groupIdAut
+action[detailedHholdings][authentication][] = passwordAut
+action[detailedHholdings][authentication][] = userIdAut
+action[detailedHholdings][lookupRecord][] = responderId
+action[detailedHholdings][lookupRecord][] = bibliographicRecordId
+action[detailedHholdings][lookupRecord][] = bibliographicRecordAgencyId
+action[detailedHholdings][] = callback
+action[detailedHholdings][] = outputType
 
 
 ; section to dump setting online
