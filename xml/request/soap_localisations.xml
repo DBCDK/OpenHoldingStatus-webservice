@@ -1,0 +1,22 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:open="http://oss.dbc.dk/ns/openholdingstatus">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <open:localisationsRequest>
+         <!--Optional:-->
+         <open:authentication>
+            <open:groupIdAut>?</open:groupIdAut>
+            <open:passwordAut>?</open:passwordAut>
+            <open:userIdAut>?</open:userIdAut>
+         </open:authentication>
+         <open:agencyId>?</open:agencyId>
+         <!--1 or more repetitions:-->
+         <open:pid>?</open:pid>
+         <!--Optional:-->
+         <open:mergePids>?</open:mergePids>
+         <!--Optional:-->
+         <open:callback>?</open:callback>
+         <!--Optional:-->
+         <open:outputType>?</open:outputType>
+      </open:localisationsRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

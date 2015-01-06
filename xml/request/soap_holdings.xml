@@ -1,0 +1,25 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:open="http://oss.dbc.dk/ns/openholdingstatus">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <open:holdingsRequest>
+         <!--Optional:-->
+         <open:authentication>
+            <open:groupIdAut>?</open:groupIdAut>
+            <open:passwordAut>?</open:passwordAut>
+            <open:userIdAut>?</open:userIdAut>
+         </open:authentication>
+         <!--1 or more repetitions:-->
+         <open:lookupRecord>
+            <!--Optional:-->
+            <open:responderId>?</open:responderId>
+            <!--You have a CHOICE of the next 2 items at this level-->
+            <open:bibliographicRecordId>?</open:bibliographicRecordId>
+            <open:pid>?</open:pid>
+         </open:lookupRecord>
+         <!--Optional:-->
+         <open:callback>?</open:callback>
+         <!--Optional:-->
+         <open:outputType>?</open:outputType>
+      </open:holdingsRequest>
+   </soapenv:Body>
+</soapenv:Envelope>
