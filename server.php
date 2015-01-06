@@ -236,7 +236,6 @@ class openHoldings extends webServiceServer {
       foreach ($param->lookupRecord as $holding) {
         if (!$fh = $auth_error)
           $fh = self::find_holding($holding->_value);
-        unset($recid);
         if (is_scalar($fh)) {
           self::add_recid($err, $holding);
           $err->responderId->_value = $holding->_value->responderId->_value;
@@ -249,6 +248,66 @@ class openHoldings extends webServiceServer {
           $hr->responder[]->_value = $fh;
         }
       }
+    }
+
+    return $ret;
+  }
+
+ /* \brief
+  * request:
+  * - lookupRecord
+  * - - responderId: librarycode for lookup-library
+  * - - pid
+  * - or next 
+  * - - bibliographicRecordId: requester record id 
+  * response:
+  * - error
+  * - - pid
+  * - or next
+  * - - bibliographicRecordId: requester record id 
+  * - - responderId: librarycode for lookup-library
+  * - - errorMessage: 
+  *
+  * @param $param object - the request
+  * @retval object - the answer
+  */
+  public function detailedHoldings($param) {
+    $dhr = &$ret->detailedHoldingsResponse->_value;
+    if (!$this->aaa->has_right('netpunkt.dk', 500)) {
+      $dhr->error->_value->errorMessage->_value = 'authentication_error';
+    }
+    elseif (isset($param->lookupRecord)) {
+      if (!is_array($param->lookupRecord)) {
+        $help = $param->lookupRecord;
+        unset($param->lookupRecord);
+        $param->lookupRecord[] = $help;
+      }
+      foreach ($param->lookupRecord as $holding) {
+        if (!$fh = $auth_error) {
+          $fh = self::find_holding($holding->_value, TRUE);
+        }
+//var_dump($holding);
+//var_dump($fh);
+        self::add_recid($dh, $holding);
+        $dh->responderId->_value = $holding->_value->responderId->_value;
+        if (is_scalar($fh)) {
+          $dh->errorMessage->_value = $fh;
+        } else {
+          foreach ($fh as $fhi) {
+            foreach (array('id' => 'localItemId', 'policy' => 'policy', 'date' => 'expectedDelivery', 'fee' => 'fee', 'note' => 'note', 'item' => 'itemText', 'level-0' => 'enumLevel0', 'level-1' => 'enumLevel1', 'level-2' => 'enumLevel2', 'level-3' => 'enumLevel3') as $key => $val) {
+              if ($help = $fhi[$key]) {
+                $item->$val->_value = trim($help);
+              }
+            }
+//var_dump($fhi); var_dump($item);
+            $dh->holdingsItem[]->_value = $item;
+            unset($item);
+          }
+        }
+        $dhr->responderDetailed[]->_value = $dh;
+        unset($dh);
+      }
+//var_dump($ret); die();
     }
 
     return $ret;
@@ -273,16 +332,17 @@ class openHoldings extends webServiceServer {
   /** \brief 
    *
    * @param $param object
+   * @param $detailed boolean
    * @retval mixed
    */
-  private function find_holding($param) {
+  private function find_holding($param, $detailed = FALSE) {
     $connect_info = self::find_protocol_and_address($param->responderId->_value);
     switch ($connect_info['protocol']) {
       case 'z3950':
-        return self::find_z3950_holding($connect_info, $param);
+        return self::find_z3950_holding($connect_info, $param, $detailed);
         break;
       case 'iso20775':
-        return self::find_iso20775_holding($connect_info, $param);
+        return self::find_iso20775_holding($connect_info, $param, $detailed);
         break;
       default:
         return 'service_not_supported_by_library';
@@ -299,9 +359,10 @@ class openHoldings extends webServiceServer {
   *
   * @param $z_info array
   * @param $param object
+   * @param $detailed boolean
   * @retval mixed
   */
-  private function find_z3950_holding($z_info, $param) {
+  private function find_z3950_holding($z_info, $param, $detailed) {
     static $z3950;
     if (empty($z3950)) {
       $z3950 = new z3950();
@@ -337,7 +398,7 @@ class openHoldings extends webServiceServer {
       return 'no_holding_return_from_library';
     }
     if ($status = self::parse_z3950_holding($record)) {
-      return self::parse_status($status);
+      return $detailed ? $status : self::parse_status($status);
     }
     else {
       return 'cannot_parse_library_answer';
@@ -354,9 +415,10 @@ class openHoldings extends webServiceServer {
   *
   * @param $info array
   * @param $param object
+  * @param $detailed boolean
   * @retval mixed
   */
-  private function find_iso20775_holding($info, $param) {
+  private function find_iso20775_holding($info, $param, $detailed) {
     $parms = $this->config->get_value('iso20775_parameters','setup');
     if (isset($param->pid)) {
       list($bibpart, $recid) = explode(':', $param->pid->_value);
@@ -377,7 +439,7 @@ class openHoldings extends webServiceServer {
     }
     if ($curl_status['http_code'] == 200) {
       if ($status = self::parse_iso20775_holding($res)) {
-        return self::parse_status($status);
+        return $detailed ? $status : self::parse_status($status);
         //return $status;
       }
       else {
@@ -445,6 +507,16 @@ class openHoldings extends webServiceServer {
   private function parse_z3950_holding($holding) {
     if ($this->dom->loadXML($holding)) {
       //echo str_replace('?', '', $holding);
+/*
+         <bibView-11 targetBibPartId-40="09267999ZXZX1991/2006ZX0000ZXZX" numberOfPieces-56="1" >
+            <bibPartLendingInfo-116 servicePolicy-109="1" >
+            </bibPartLendingInfo-116>
+            <bibPartEnumeration-45 enumLevel-93="1" enumCaption-94="År: " specificEnumeration-95="0000" >
+               <ChildEnumeration enumLevel-93="2" enumCaption-94="Volume: " specificEnumeration-95="1991/2006" >
+               </ChildEnumeration>
+            </bibPartEnumeration-45>
+         </bibView-11>
+*/
       foreach ($this->dom->getElementsByTagName('bibView-11') as $item) {
         $h = array();
         foreach ($item->attributes as $key => $attr)
@@ -467,8 +539,12 @@ class openHoldings extends webServiceServer {
                 break;
             }
         }
-        //foreach ($item->getElementsByTagName('bibPartEnumeration-45') as $info) { }
-        //foreach ($item->getElementsByTagName('bibPartChronology-46') as $info) { }
+        foreach ($item->getElementsByTagName('bibPartEnumeration-45') as $info) { 
+          self::get_enumeration($info, $h);
+        }
+        foreach ($item->getElementsByTagName('bibPartChronology-46') as $info) {
+          self::get_chronology($info, $h);
+        }
 
         $hold[] = $h;
       }
@@ -481,6 +557,65 @@ class openHoldings extends webServiceServer {
     }
     else {
       return FALSE;
+    }
+  }
+
+  /** \brief parse attributes of bibpartchronology-46
+   *
+   *  <bibpartchronology-46 chronLevel-96="1" chroncaption-97="År: " specificchronology-98="0000" >
+   *  </bibpartchronology-46
+   *
+   * @param $node DOMNode
+   * @param $list array 
+   */
+  private function get_chronology($node, &$list) {
+    if ($node) {
+      foreach ($node->attributes as $key => $attr) {
+        switch ($key) {
+          case 'chronLevel-96':
+            $level = $attr->nodeValue;
+            break;
+          case 'chroncaption-97':
+            $caption = $attr->nodeValue;
+            break;
+          case 'specificchronology-98':
+            $enum = $attr->nodeValue;
+            break;
+        }
+      }
+      $list['level-0'] = $enum;
+      $list['item'] .= $caption . $enum . ' ';
+    }
+  }
+
+  /** \brief parse attributes of bibPartEnumeration-45 and ChildEnumeration
+   *
+   *  <bibPartEnumeration-45 enumLevel-93="1" enumCaption-94="År: " specificEnumeration-95="0000" >
+   *    <ChildEnumeration enumLevel-93="2" enumCaption-94="Volume: " specificEnumeration-95="1991/2006" >
+   *    </ChildEnumeration>
+   *  </bibPartEnumeration-45>
+   *
+   * @param $node DOMNode
+   * @param $list array 
+   */
+  private function get_enumeration($node, &$list) {
+    if ($node) {
+      foreach ($node->attributes as $key => $attr) {
+        switch ($key) {
+          case 'enumLevel-93':
+            $level = $attr->nodeValue;
+            break;
+          case 'enumCaption-94':
+            $caption = $attr->nodeValue;
+            break;
+          case 'specificEnumeration-95':
+            $enum = $attr->nodeValue;
+            break;
+        }
+      }
+      $list['level-' . $level] = $enum;
+      $list['item'] .= $caption . $enum . ' ';
+      self::get_enumeration($node->getElementsByTagName('ChildEnumeration')->item(0), $list); 
     }
   }
 

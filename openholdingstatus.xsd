@@ -63,6 +63,30 @@ You should have received a copy of the GNU Affero General Public License along w
 			</xs:choice>
 		</xs:complexType>
 	</xs:element>
+	<xs:element name="detailedHoldingsRequest">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">The service request for looking up detailed local holdings of a given material</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="hs:authentication" minOccurs="0"/>
+				<xs:element ref="hs:lookupRecord" maxOccurs="unbounded"/>
+				<xs:element ref="hs:callback" minOccurs="0"/>
+				<xs:element ref="hs:outputType" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="detailedHoldingsResponse">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">The service response</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:choice>
+				<xs:element ref="hs:responderDetailed" maxOccurs="unbounded"/>
+				<xs:element ref="hs:error" maxOccurs="unbounded"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
 	<xs:element name="agency">
 		<xs:complexType>
 			<xs:sequence>
@@ -104,6 +128,26 @@ You should have received a copy of the GNU Affero General Public License along w
 	</xs:element>
 	<xs:element name="callNumber" type="xs:string"/>
 	<xs:element name="codes" type="xs:string"/>
+	<xs:element name="enumLevel0" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Local enumeration. Can be used for sorting</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="enumLevel1" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Local enumeration -for serials  often year. Can be used for sorting</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="enumLevel2" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Local enumeration - for serials often volume. Can be used for sorting</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="enumLevel3" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Local enumeration - for serials often issue number. Can be used for sorting</xs:documentation>
+		</xs:annotation>
+	</xs:element>
 	<xs:element name="error">
 		<xs:complexType>
 			<xs:sequence>
@@ -115,9 +159,14 @@ You should have received a copy of the GNU Affero General Public License along w
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="errorMessage" type="hs:errorType"/>
-	<xs:element name="expectedDelivery" type="xs:date">
+	<xs:element name="expectedDelivery" type="xs:dateTime">
 		<xs:annotation>
 			<xs:documentation>The date the responder expects to be able to deliver the material.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="fee" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Service fee.</xs:documentation>
 		</xs:annotation>
 	</xs:element>
 	<xs:element name="groupIdAut" type="xs:string">
@@ -125,19 +174,25 @@ You should have received a copy of the GNU Affero General Public License along w
 			<xs:documentation xml:lang="en">Identifier of the group (most often a library number) the user belongs to (for authentication purposes)</xs:documentation>
 		</xs:annotation>
 	</xs:element>
-	<xs:element name="mergePids" type="xs:boolean">
-		<xs:annotation>
-			<xs:documentation xml:lang="en">Merge lists of agencies across pids</xs:documentation>
-		</xs:annotation>
+	<xs:element name="holdingsItem">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="hs:localItemId" minOccurs="0"/>
+				<xs:element ref="hs:policy" minOccurs="0"/>
+				<xs:element ref="hs:expectedDelivery" minOccurs="0"/>
+				<xs:element ref="hs:fee" minOccurs="0"/>
+				<xs:element ref="hs:note" minOccurs="0"/>
+				<xs:element ref="hs:itemText" minOccurs="0"/>
+				<xs:element ref="hs:enumLevel0" minOccurs="0"/>
+				<xs:element ref="hs:enumLevel1" minOccurs="0"/>
+				<xs:element ref="hs:enumLevel2" minOccurs="0"/>
+				<xs:element ref="hs:enumLevel3" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
 	</xs:element>
-	<xs:element name="note" type="xs:string">
+	<xs:element name="itemText" type="xs:string">
 		<xs:annotation>
-			<xs:documentation xml:lang="en">Note from local library. check_local_library is returned when a serial or multivolume record is found</xs:documentation>
-		</xs:annotation>
-	</xs:element>
-	<xs:element name="passwordAut" type="xs:string">
-		<xs:annotation>
-			<xs:documentation xml:lang="en">Password (for authentication purposes)</xs:documentation>
+			<xs:documentation xml:lang="en">Text describing the item. For serials year, volume and issue text.</xs:documentation>
 		</xs:annotation>
 	</xs:element>
 	<xs:element name="localHoldingsId" type="xs:string">
@@ -148,6 +203,11 @@ You should have received a copy of the GNU Affero General Public License along w
 	<xs:element name="localIdentifier" type="xs:string">
 		<xs:annotation>
 			<xs:documentation xml:lang="en">The libraries own identification.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="localItemId" type="xs:string">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">Identifier of item.</xs:documentation>
 		</xs:annotation>
 	</xs:element>
 	<xs:element name="localisations">
@@ -183,6 +243,26 @@ You should have received a copy of the GNU Affero General Public License along w
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
+	<xs:element name="mergePids" type="xs:boolean">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">Merge lists of agencies across pids</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="note" type="xs:string">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">Note from local library. check_local_library is returned when a serial or multivolume record is found</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="passwordAut" type="xs:string">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">Password (for authentication purposes)</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="policy" type="xs:string">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">Service policy</xs:documentation>
+		</xs:annotation>
+	</xs:element>
 	<xs:element name="outputType" type="hs:outputTypeType">
 		<xs:annotation>
 			<xs:documentation xml:lang="en">E.g. xml, json or php.</xs:documentation>
@@ -203,11 +283,29 @@ You should have received a copy of the GNU Affero General Public License along w
 				<xs:element ref="hs:note" minOccurs="0"/>
 				<xs:element ref="hs:willLend"/>
 				<xs:element ref="hs:expectedDelivery" minOccurs="0"/>
-			    <xs:choice>
-				    <xs:element ref="hs:bibliographicRecordId"/>
-				    <xs:element ref="hs:pid"/>
-			    </xs:choice>
+			  <xs:choice>
+				  <xs:element ref="hs:bibliographicRecordId"/>
+				  <xs:element ref="hs:pid"/>
+			  </xs:choice>
 				<xs:element ref="hs:responderId"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="responderDetailed">
+		<xs:annotation>
+			<xs:documentation xml:lang="en"/>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+			  <xs:choice>
+				  <xs:element ref="hs:bibliographicRecordId"/>
+				  <xs:element ref="hs:pid"/>
+			  </xs:choice>
+				<xs:element ref="hs:responderId"/>
+			  <xs:choice>
+				  <xs:element ref="hs:holdingsItem" minOccurs="0" maxOccurs="unbounded"/>
+				  <xs:element ref="hs:errorMessage"/>
+			  </xs:choice>
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
