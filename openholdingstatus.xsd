@@ -159,7 +159,7 @@ You should have received a copy of the GNU Affero General Public License along w
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="errorMessage" type="hs:errorType"/>
-	<xs:element name="expectedDelivery" type="xs:dateTime">
+	<xs:element name="expectedDelivery" type="xs:date">
 		<xs:annotation>
 			<xs:documentation>The date the responder expects to be able to deliver the material.</xs:documentation>
 		</xs:annotation>

@@ -296,7 +296,7 @@ class openHoldings extends webServiceServer {
           foreach ($fh as $fhi) {
             foreach (array('id' => 'localItemId', 'policy' => 'policy', 'date' => 'expectedDelivery', 'fee' => 'fee', 'note' => 'note', 'item' => 'itemText', 'level-0' => 'enumLevel0', 'level-1' => 'enumLevel1', 'level-2' => 'enumLevel2', 'level-3' => 'enumLevel3') as $key => $val) {
               if ($help = $fhi[$key]) {
-                $item->$val->_value = trim($help);
+                $item->$val->_value = ($key == 'date' ? substr($help, 0, 10) : trim($help));
               }
             }
 //var_dump($fhi); var_dump($item);
