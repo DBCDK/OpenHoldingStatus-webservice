@@ -11,14 +11,17 @@
 ;version
 ; Note that the version is used as part of the cache key, so do not run 2 versions of the service with identical
 ; version name, unless you specificly want them to share cache
-version = 2.0
+version = 2.1
 
 ; set only_https to accept https call only
 ;only_https = 1
 
 ; --------------
-; wsdl for service
+; wsdl and service location for service. Used to replace __LOCATION__ in wsdl
 wsdl = openholdingstatus.wsdl
+
+;service location used as endpoint in the wsdl-file. If not set, the actual address/location is used
+;service_location = openholdingstatus.addi.dk/2.1/
 
 ; --------------
 ; in_house_domain may use ?ShowInfo and use create_sample form
@@ -46,12 +49,26 @@ default_namespace_prefix = ohs
 xmlns[ohs] = http://oss.dbc.dk/ns/openholdingstatus
 
 ; --------------
+; url_override
+; url_override[url_command] = functionToCall
+; if start of the request equals url_command and functionToCall exists, it will be called
+; like: myservice.dk/myversion?url_command
+; functions ShowInfo, Version, HowRU, Wsdl and RegressionTest are found in the abstract service
+; if not specified, defaults to HowRU, ShowInfo, wsdl and Version
+url_override[HowRU] = HowRU
+url_override[ShowInfo] = ShowInfo
+url_override[Version] = Version
+url_override[wsdl] = Wsdl
+;url_override[RegressionTest] = RegressionTest
+
+; --------------
 ; path to xml-examples
 xmldir = ./xml
 
 ; --------------
 ; logfile for verbose output
 logfile = /tmp/openholdingstatus.log
+dump_timer = openholdingstatus(%s)
 
 ; set verboselevel
 ;   WARNING - simple warnings
@@ -69,13 +86,15 @@ verbose = WARNING+ERROR+FATAL+STAT+TIMER+TRACE+DEBUG+Z3950+OCI
 ; url to holdings-/localization-service from openHolding
 ols_get_holdings = http://some.server.dk:9080/holdings-service/getAllHoldings?requestOrderBib=%s&pid=%s
 
+; --------------
 ; url to get request_order sequence from openAgency
 agency_request_order = http://some_open_agency.server.dk/?action=requestOrder&agencyId=%s
 ; url to get server information from openAgency
 agency_server_information = http://some_open_agency.server.dk/?action=service&service=serverInformation&agencyId=%s
 
-; parameters for iso20775 sru search
-iso20775_parameters = version=1.2&operation=searchRetrieve&recordSchema=isohold&query=%s
+; --------------
+; iso20772 server REGA location
+;iso20775_server = http://some_rega_server.dbc.dk/rega-ws/rest/holdings
 
 ; --------------
 ; for testing purposes
@@ -148,14 +167,14 @@ action[localisations][] = mergePids
 action[localisations][] = callback
 action[localisations][] = outputType
 
-action[detailedHholdings][authentication][] = groupIdAut
-action[detailedHholdings][authentication][] = passwordAut
-action[detailedHholdings][authentication][] = userIdAut
-action[detailedHholdings][lookupRecord][] = responderId
-action[detailedHholdings][lookupRecord][] = bibliographicRecordId
-action[detailedHholdings][lookupRecord][] = bibliographicRecordAgencyId
-action[detailedHholdings][] = callback
-action[detailedHholdings][] = outputType
+action[detailedHoldings][authentication][] = groupIdAut
+action[detailedHoldings][authentication][] = passwordAut
+action[detailedHoldings][authentication][] = userIdAut
+action[detailedHoldings][lookupRecord][] = responderId
+action[detailedHoldings][lookupRecord][] = bibliographicRecordId
+action[detailedHoldings][lookupRecord][] = bibliographicRecordAgencyId
+action[detailedHoldings][] = callback
+action[detailedHoldings][] = outputType
 
 ; ==============
 

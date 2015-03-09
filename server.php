@@ -26,6 +26,7 @@ require_once('OLS_class_lib/z3950_class.php');
 
 class openHoldings extends webServiceServer {
  
+  protected $tracking_id;
   protected $curl;
   protected $dom;
 
@@ -60,6 +61,7 @@ class openHoldings extends webServiceServer {
   * @retval object - the answer
   */
   public function localisations($param) {
+    $this->tracking_id = verbose::set_tracking_id('ohs', $param->trackingId->_value);
     $lr = &$ret->localisationsResponse->_value;
     if (!$this->aaa->has_right('netpunkt.dk', 500)) {
       $error = 'authentication_error';
@@ -223,6 +225,7 @@ class openHoldings extends webServiceServer {
   * @retval object - the answer
   */
   public function holdings($param) {
+    $this->tracking_id = verbose::set_tracking_id('ohs', $param->trackingId->_value);
     $hr = &$ret->holdingsResponse->_value;
     if (!$this->aaa->has_right('netpunkt.dk', 500))
       $auth_error = 'authentication_error';
@@ -272,6 +275,7 @@ class openHoldings extends webServiceServer {
   * @retval object - the answer
   */
   public function detailedHoldings($param) {
+    $this->tracking_id = verbose::set_tracking_id('ohs', $param->trackingId->_value);
     $dhr = &$ret->detailedHoldingsResponse->_value;
     if (!$this->aaa->has_right('netpunkt.dk', 500)) {
       $dhr->error->_value->errorMessage->_value = 'authentication_error';
@@ -419,35 +423,52 @@ class openHoldings extends webServiceServer {
   * @retval mixed
   */
   private function find_iso20775_holding($info, $param, $detailed) {
-    $parms = $this->config->get_value('iso20775_parameters','setup');
+    $rega_url = $this->config->get_value('iso20775_server','setup');
     if (isset($param->pid)) {
       list($bibpart, $recid) = explode(':', $param->pid->_value);
     }
     else {
       $recid = $param->bibliographicRecordId->_value;
     }
-    $url = $info['url'] . '?' . sprintf($parms, urlencode('rec.id=' . $recid));
+    $post->trackingId = $this->tracking_id;
+    $post->timeout = 10000;
+    $post->records[0]->baseUrl = $info['url'];
+    $post->records[0]->recordId = $recid;
+    $this->curl->set_post(json_encode($post), 0);
+    $this->curl->set_option(CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'), 0);
     if ($this->config->get_value('use_test_iso20775_replies','setup')) {
-      $res = self::test_iso20775_reply($recid, self::strip_agency($param->responderId->_value));
+      $result[0]->record->holding = self::test_iso20775_reply($recid, self::strip_agency($param->responderId->_value));
+      $result[0]->responseCode = 200;
       $curl_status['http_code'] = 200;
     }
     else {
       $this->watch->start('iso20775');
-      $res = $this->curl->get($url);
-      $this->watch->stop('iso20775');
+      $result = @ json_decode($this->curl->get($rega_url, 0));
       $curl_status = $this->curl->get_status();
+      $this->watch->stop('iso20775');
     }
+//var_dump(json_encode($post)); var_dump($result); var_dump($curl_status); die();
     if ($curl_status['http_code'] == 200) {
-      if ($status = self::parse_iso20775_holding($res)) {
-        return $detailed ? $status : self::parse_status($status);
-        //return $status;
+      if (($result[0]->responseCode == 200 )&& $result[0]->holding) {
+        if ($status = self::parse_iso20775_holding($result[0]->holding)) {
+          return $detailed ? $status : self::parse_status($status);
+          //return $status;
+        }
+        else {
+          verbose::log(ERROR, 'OpenHoldings:: Cannot parse: "' . $result[0]->holding .
+                              '" from: ' . $info['url']);
+          return 'cannot_parse_library_answer';
+        }
       }
       else {
-        return 'cannot_parse_library_answer';
+        verbose::log(ERROR, 'OpenHoldings:: External responseCode: ' .  $result[0]->responseCode .
+                            ' holding: "' . $result[0]->holding .
+                            '" for: ' . $info['url']);
+        return 'error_searching_library';
       }
     } 
     else {
-      verbose::log(ERROR, 'OpenHoldings:: http error: ' .  $curl_status['http_code'] .
+      verbose::log(FATAL, 'OpenHoldings:: http error: ' .  $curl_status['http_code'] .
                           ' error: "' . $curl_status['error'] .
                           '" for: ' . $curl_status['url']);
       return 'error_searching_library';
@@ -484,6 +505,8 @@ class openHoldings extends webServiceServer {
           foreach ($item->getElementsByTagName('holdingStructured')->item(0)->getElementsByTagName('set') as $hs) {
             foreach ($hs->getElementsByTagName('component') as $cpn) {
               $h['id'] = self::first_node_value($cpn, 'pieceIdentifier/value');
+              $h['level-0'] = 
+              $h['item'] = self::first_node_value($cpn, 'enumerationAndChronology/text');
               $h['date'] = self::first_node_value($cpn, 'availabilityInformation/status/dateTimeAvailable');
               $h['policy'] = self::first_node_value($cpn, 'availabilityInformation/status/availabilityStatus');
               $hold[] = $h;
