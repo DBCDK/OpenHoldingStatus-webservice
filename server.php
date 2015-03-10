@@ -382,11 +382,11 @@ class openHoldings extends webServiceServer {
     $z3950->set_step(1);
     if (isset($param->pid)) {
       list($bibpart, $recid) = explode(':', $param->pid->_value);
-      $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $recid);
     }
     else {
-      $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $param->bibliographicRecordId->_value);
+      $recid = $param->bibliographicRecordId->_value;
     }
+    $z3950->set_rpn('@attr 4=103 @attr BIB1 1=12 ' . $recid);
     $this->watch->start('z3950');
     $hits = $z3950->z3950_search(5);
     $this->watch->stop('z3950');
@@ -395,9 +395,11 @@ class openHoldings extends webServiceServer {
       return 'error_searching_library';
     }
     if (!$hits) {
+      verbose::log(TRACE, 'OpenHoldings:: z3950: ' . $z_info['url'] . ' id: ' . $recid . ' item_not_found');
       return 'item_not_found';
     }
     $record = $z3950->z3950_record(1);
+    verbose::log(TRACE, 'OpenHoldings:: z3950: ' . $z_info['url'] . ' id: ' . $recid . ' record: ' . str_replace("\n", '', $record));
     if (empty($record)) {
       return 'no_holding_return_from_library';
     }
@@ -450,6 +452,7 @@ class openHoldings extends webServiceServer {
 //var_dump(json_encode($post)); var_dump($result); var_dump($curl_status); die();
     if ($curl_status['http_code'] == 200) {
       if (($result[0]->responseCode == 200 )&& $result[0]->holding) {
+        verbose::log(TRACE, 'OpenHoldings:: iso20775: ' . $info['url'] . ' id: ' . $recid . ' record: ' . str_replace("\n", '', $result[0]->holding));
         if ($status = self::parse_iso20775_holding($result[0]->holding)) {
           return $detailed ? $status : self::parse_status($status);
           //return $status;
