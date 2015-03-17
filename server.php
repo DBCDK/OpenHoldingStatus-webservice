@@ -298,7 +298,7 @@ class openHoldings extends webServiceServer {
           $dh->errorMessage->_value = $fh;
         } else {
           foreach ($fh as $fhi) {
-            foreach (array('id' => 'localItemId', 'policy' => 'policy', 'date' => 'expectedDelivery', 'fee' => 'fee', 'note' => 'note', 'item' => 'itemText', 'level-0' => 'enumLevel0', 'level-1' => 'enumLevel1', 'level-2' => 'enumLevel2', 'level-3' => 'enumLevel3') as $key => $val) {
+            foreach (array('id' => 'localItemId', 'policy' => 'policy', 'date' => 'expectedDelivery', 'fee' => 'fee', 'note' => 'note', 'item' => 'itemText', 'target_location_id' => 'localIdentifier', 'level-0' => 'enumLevel0', 'level-1' => 'enumLevel1', 'level-2' => 'enumLevel2', 'level-3' => 'enumLevel3') as $key => $val) {
               if ($help = $fhi[$key]) {
                 $item->$val->_value = ($key == 'date' ? substr($help, 0, 10) : trim($help));
               }
@@ -451,27 +451,38 @@ class openHoldings extends webServiceServer {
     }
 //var_dump(json_encode($post)); var_dump($result); var_dump($curl_status); die();
     if ($curl_status['http_code'] == 200) {
-      if (($result[0]->responseCode == 200 )&& $result[0]->holding) {
-        verbose::log(TRACE, 'OpenHoldings:: iso20775: ' . $info['url'] . ' id: ' . $recid . ' record: ' . str_replace("\n", '', $result[0]->holding));
-        if ($status = self::parse_iso20775_holding($result[0]->holding)) {
-          return $detailed ? $status : self::parse_status($status);
-          //return $status;
+      if ($result[0]->responseCode == 200) {
+        if ($result[0]->holding) {
+          verbose::log(TRACE, 'OpenHoldings:: iso20775: ' . $info['url'] . 
+                              ' id: ' . $recid . ' record: ' . str_replace("\n", '', $result[0]->holding));
+          if ($status = self::parse_iso20775_holding($result[0]->holding)) {
+            return $detailed ? $status : self::parse_status($status);
+            //return $status;
+          }
+          else {
+            verbose::log(ERROR, 'OpenHoldings:: Cannot parse: "' . $result[0]->holding .
+                                '" from: ' . $info['url']);
+            return 'cannot_parse_library_answer';
+          }
         }
         else {
-          verbose::log(ERROR, 'OpenHoldings:: Cannot parse: "' . $result[0]->holding .
-                              '" from: ' . $info['url']);
-          return 'cannot_parse_library_answer';
+          verbose::log(TRACE, 'OpenHoldings:: External responseCode: 200 ' . 
+                              ' errorMsg: "' . $result[0]->errorMsg .
+                              ' holding: "' . $result[0]->holding .
+                              '" for: ' . $info['url']);
+          return 'item_not_found';
         }
       }
       else {
-        verbose::log(ERROR, 'OpenHoldings:: External responseCode: ' .  $result[0]->responseCode .
+        verbose::log(ERROR, 'OpenHoldings:: External responseCode: ' . $result[0]->responseCode .
+                            ' errorMsg: "' . $result[0]->errorMsg .
                             ' holding: "' . $result[0]->holding .
                             '" for: ' . $info['url']);
         return 'error_searching_library';
       }
     } 
     else {
-      verbose::log(FATAL, 'OpenHoldings:: http error: ' .  $curl_status['http_code'] .
+      verbose::log(FATAL, 'OpenHoldings:: http error: ' . $curl_status['http_code'] .
                           ' error: "' . $curl_status['error'] .
                           '" for: ' . $curl_status['url']);
       return 'error_searching_library';
@@ -543,6 +554,7 @@ class openHoldings extends webServiceServer {
             </bibPartEnumeration-45>
          </bibView-11>
 */
+      $target_location_id = $this->dom->getElementsByTagName('holdingsSiteLocation-6')->item(0)->getAttribute('targetLocationId-26');
       foreach ($this->dom->getElementsByTagName('bibView-11') as $item) {
         $h = array();
         foreach ($item->attributes as $key => $attr)
@@ -565,6 +577,7 @@ class openHoldings extends webServiceServer {
                 break;
             }
         }
+        $h['target_location_id'] = $target_location_id;
         foreach ($item->getElementsByTagName('bibPartEnumeration-45') as $info) { 
           self::get_enumeration($info, $h);
         }
@@ -640,7 +653,7 @@ class openHoldings extends webServiceServer {
         }
       }
       $list['level-' . $level] = $enum;
-      $list['item'] .= $caption . $enum . ' ';
+      $list['item'] .= trim($caption) . $enum . ' ';
       self::get_enumeration($node->getElementsByTagName('ChildEnumeration')->item(0), $list); 
     }
   }
