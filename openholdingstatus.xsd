@@ -183,6 +183,7 @@ You should have received a copy of the GNU Affero General Public License along w
 				<xs:element ref="hs:fee" minOccurs="0"/>
 				<xs:element ref="hs:note" minOccurs="0"/>
 				<xs:element ref="hs:itemText" minOccurs="0"/>
+				<xs:element ref="hs:localIdentifier" minOccurs="0"/>
 				<xs:element ref="hs:enumLevel0" minOccurs="0"/>
 				<xs:element ref="hs:enumLevel1" minOccurs="0"/>
 				<xs:element ref="hs:enumLevel2" minOccurs="0"/>
