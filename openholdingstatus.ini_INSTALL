@@ -11,7 +11,7 @@
 ;version
 ; Note that the version is used as part of the cache key, so do not run 2 versions of the service with identical
 ; version name, unless you specificly want them to share cache
-version = 2.1
+version = 2.2
 
 ; set only_https to accept https call only
 ;only_https = 1
