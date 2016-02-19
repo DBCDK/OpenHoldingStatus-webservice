@@ -503,9 +503,13 @@ class openHoldings extends webServiceServer {
           $h['fee'] .= self::prefix('Unit: ', self::first_node_value($item, 'summaryPolicy/feeInformation/feeStructured/feeUnit'));
           $h['fee'] .= self::prefix('Amount: ', self::first_node_value($item, 'summaryPolicy/feeInformation/feeStructured/feeAmount'));
         }
-        $h['note'] = self::first_node_value($item, 'summaryPolicy/availability/text');
+        $summary_note = '';
+        if ($summary_note = self::first_node_value($item, 'summaryPolicy/availability/text')) {
+          $summary_note = ' - ' . $summary_note;
+        }
         if ($item->getElementsByTagName('holdingSimple')->length) {
           $h['id'] = self::first_node_value($this->dom, 'resource/resourceIdentifier/value');
+          $h['note'] = self::first_node_value($this->dom, 'copyInformation/note') . $summary_note;
           if (self::first_node_value($item, 'holdingSimple/copiesSummary/status/availableCount')) {
             $h['policy'] = 1;
             $h['date'] = self::first_node_value($item, 'holdingSimple/copiesSummary/status/earliestDispatchDate');
