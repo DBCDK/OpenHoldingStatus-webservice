@@ -558,7 +558,10 @@ class openHoldings extends webServiceServer {
             </bibPartEnumeration-45>
          </bibView-11>
 */
-      $target_location_id = $this->dom->getElementsByTagName('holdingsSiteLocation-6')->item(0)->getAttribute('targetLocationId-26');
+      if (!$this->dom->getElementsByTagName('holdingsSiteLocation-6')->length) {
+        return array(array('note' => 'No holding'));
+      }
+      @ $target_location_id = $this->dom->getElementsByTagName('holdingsSiteLocation-6')->item(0)->getAttribute('targetLocationId-26');
       foreach ($this->dom->getElementsByTagName('bibView-11') as $item) {
         $h = array();
         foreach ($item->attributes as $key => $attr)
