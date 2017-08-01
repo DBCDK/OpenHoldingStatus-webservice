@@ -708,6 +708,7 @@ class openHoldings extends webServiceServer {
     if (empty($z_infos[$lib])) {
       $url = sprintf($this->config->get_value('agency_server_information','setup'), 
                      self::strip_agency($lib));
+      $this->curl->set_option(CURLOPT_POST, 0);      
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
