@@ -103,7 +103,7 @@ class openHoldings extends webServiceServer {
       unset($error);
       $url = sprintf($this->config->get_value('ols_get_holdings','setup'), 
                      self::strip_agency($param->agencyId->_value), 
-                     urlencode($pid->_value));
+                     urlencode(self::skip_multi_part_pid_info($pid->_value)));
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
@@ -381,7 +381,7 @@ class openHoldings extends webServiceServer {
     $z3950->set_start(1);
     $z3950->set_step(1);
     if (isset($param->pid)) {
-      list($bibpart, $recid) = explode(':', $param->pid->_value);
+      list($bibpart, $recid) = explode(':', self::skip_multi_part_pid_info($param->pid->_value));
     }
     else {
       $recid = $param->bibliographicRecordId->_value;
@@ -427,7 +427,7 @@ class openHoldings extends webServiceServer {
   private function find_iso20775_holding($info, $param, $detailed) {
     $rega_url = $this->config->get_value('iso20775_server','setup');
     if (isset($param->pid)) {
-      list($bibpart, $recid) = explode(':', $param->pid->_value);
+      list($bibpart, $recid) = explode(':', self::skip_multi_part_pid_info($param->pid->_value));
     }
     else {
       $recid = $param->bibliographicRecordId->_value;
@@ -708,7 +708,7 @@ class openHoldings extends webServiceServer {
     if (empty($z_infos[$lib])) {
       $url = sprintf($this->config->get_value('agency_server_information','setup'), 
                      self::strip_agency($lib));
-      $this->curl->set_option(CURLOPT_POST, 0);      
+      $this->curl->set_option(CURLOPT_POST, 0);
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
@@ -808,6 +808,18 @@ class openHoldings extends webServiceServer {
     require_once('examples.php');
     return test_iso_reply($id, $lib);
   }
+
+  /** \brief Remove multi part information from pid. Multipart infor is placed after two _
+   * @param $pid string
+   * @retval string 
+   */
+  private function skip_multi_part_pid_info($pid) {
+    list($collection, $id) = explode(':', $pid, 2);
+    if ($p = strpos($id, '__')) {
+      return $collection . ':' . substr($id, 0, $p);
+    }
+    return $pid;
+  }
 }
 
 /*
@@ -816,5 +828,4 @@ class openHoldings extends webServiceServer {
 
 $ws=new openHoldings();
 $ws->handle_request();
-
 
