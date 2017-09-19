@@ -103,7 +103,7 @@ class openHoldings extends webServiceServer {
       unset($error);
       $url = sprintf($this->config->get_value('ols_get_holdings','setup'), 
                      self::strip_agency($param->agencyId->_value), 
-                     urlencode(self::skip_multi_part_pid_info($pid->_value)));
+                     urlencode($pid->_value));
       $res = $this->curl->get($url);
       $curl_status = $this->curl->get_status();
       if ($curl_status['http_code'] == 200) {
