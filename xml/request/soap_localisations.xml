@@ -9,6 +9,8 @@
             <open:userIdAut>?</open:userIdAut>
          </open:authentication>
          <open:agencyId>?</open:agencyId>
+         <!--Optional:-->
+         <open:role>?</open:role>
          <!--1 or more repetitions:-->
          <open:pid>?</open:pid>
          <!--Optional:-->
