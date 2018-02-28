@@ -45,6 +45,7 @@ You should have received a copy of the GNU Affero General Public License along w
 			<xs:sequence>
 				<xs:element ref="hs:authentication" minOccurs="0"/>
 				<xs:element ref="hs:agencyId"/>
+				<xs:element ref="hs:role" minOccurs="0"/>
 				<xs:element ref="hs:pid" maxOccurs="unbounded"/>
 				<xs:element ref="hs:mergePids" minOccurs="0"/>
 				<xs:element ref="hs:callback" minOccurs="0"/>
@@ -313,6 +314,11 @@ You should have received a copy of the GNU Affero General Public License along w
 	<xs:element name="responderId" type="xs:string">
 		<xs:annotation>
 			<xs:documentation xml:lang="en">Id of a specific agency that the holdings lookup has to be made towards.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="role" type="xs:string">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">The context of the requester</xs:documentation>
 		</xs:annotation>
 	</xs:element>
 	<xs:element name="userIdAut" type="xs:string">
