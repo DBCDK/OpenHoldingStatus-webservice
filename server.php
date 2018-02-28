@@ -23,6 +23,7 @@
 require_once('OLS_class_lib/webServiceServer_class.php');
 require_once('OLS_class_lib/oci_class.php');
 require_once('OLS_class_lib/z3950_class.php');
+require_once 'OLS_class_lib/open_agency_v2_class.php';
 
 class openHoldings extends webServiceServer {
  
@@ -36,6 +37,7 @@ class openHoldings extends webServiceServer {
     $this->curl->set_option(CURLOPT_TIMEOUT, 30);
     $this->dom = new DomDocument();
     $this->dom->preserveWhiteSpace = false;
+    $this->openagency = new OpenAgency($this->config->get_value('agency', 'setup'));
   }
 
  /* \brief
@@ -70,24 +72,10 @@ class openHoldings extends webServiceServer {
       is_array($param->pid) ? $pids = $param->pid : $pids[] = $param->pid;
       $sort_n_merge = (self::xs_boolean($param->mergePids->_value) && count($pids) > 1);
       if ($sort_n_merge) {
-        $url = sprintf($this->config->get_value('agency_request_order','setup'), 
-                       self::strip_agency($param->agencyId->_value));
-        $res = $this->curl->get($url);
-        $curl_status = $this->curl->get_status();
-        if ($curl_status['http_code'] == 200) {
-          if ($this->dom->loadXML($res)) {
-            foreach ($this->dom->getElementsByTagName('agencyId') as $aid)
-              $r_order[$aid->nodeValue] = count($r_order);
-          }
-          else {
-            $error = 'cannot_parse_request_order';
-          }
-        }
-        else {
+        $r_order = $this->openagency->get_request_priority(self::strip_agency($param->agencyId->_value));
+        if (empty($r_order)) {
           $error = 'error_fetching_request_order';
-          verbose::log(ERROR, 'OpenHoldings:: fetch request order http code: ' . $curl_status['http_code'] .
-                              ' error: "' . $curl_status['error'] .
-                              '" for: ' . $curl_status['url']);
+          verbose::log(ERROR, 'OpenHoldings:: fetch request order returned with empty list for agency: ' . $param->agencyId->_value);
         }
       }
     }
@@ -171,7 +159,51 @@ class openHoldings extends webServiceServer {
       usort($h_arr[0]['holds'], array($this, 'compare'));
     }
 
-//print_r($h_arr); die();
+    if ($param->role->_value == 'bibdk') {
+      $check_in_solr = array();
+      if (is_array($h_arr)) {
+        foreach ($h_arr as &$holds) {
+          if (isset($holds['holds'])) {
+            foreach ($holds['holds'] as $h_idx => &$hold) {
+              $bib_type = self::bib_type($hold['agencyId']);
+              switch ($bib_type) {
+                case 'Folkebibliotek':
+                  if (self::id_length($hold['fedoraPid']) == 9) {
+                    unset($holds['holds'][$h_idx]);
+                  }
+                  break;
+                case 'Skolebibliotek':
+                  unset($holds['holds'][$h_idx]);
+                  break;
+                default:
+                  if (self::library_rule($hold['agencyId'], 'part_of_bibliotek_dk') !== TRUE) {
+                    unset($holds['holds'][$h_idx]);
+                  } 
+                  else {
+                    $ident = $hold['localIdentifier'] . '|' . $hold['agencyId'];
+                    $check_in_solr[$ident] = '(rec.id:' . $ident . ' AND rec.excludeFromUnionCatalogue:1)';
+                  }
+              }
+            }
+          }
+        }
+      }
+
+      if ($check_in_solr) {
+        $solr_res = self::get_solr($check_in_solr);
+        foreach ($h_arr as &$holds) {
+          if (isset($holds['holds'])) {
+            foreach ($holds['holds'] as $h_idx => &$hold) {
+              $ident = $hold['localIdentifier'] . '|' . $hold['agencyId'];
+              if ($solr_res[$ident]) {
+                unset($holds['holds'][$h_idx]);
+              }
+            }
+          }
+        }
+      }
+    }
+
     if (is_array($h_arr)) {
       foreach ($h_arr as $holds) {
         foreach ($holds['pids'] as $pid)
@@ -819,6 +851,65 @@ class openHoldings extends webServiceServer {
       return $collection . ':' . substr($id, 0, $p);
     }
     return $pid;
+  }
+
+  /** \brief Return type of library
+   * @param $agency string
+   * @retval string 
+   */
+  private function bib_type($agency) {
+    $agency_type = $this->openagency->get_agency_type($agency);
+    return ($agency_type ? $agency_type : 'other');
+  }
+
+  /** \brief split pid and return length of id
+   * @param $pid string
+   * @retval integer 
+   */
+  private function id_length($pid) {
+    list($ns, $id) = explode(':', $pid); 
+    return strlen($id);
+  }
+
+  /** \brief return a given library rule for a given agency
+   * @param $agency string - the library
+   * @param $rule string - the library rule
+   * @retval boolean 
+   */
+  private function library_rule($agency, $rule) {
+    static $part_of = array();
+    if (!isset($part_of[$agency])) {
+      $part_of[$agency] = $this->openagency->get_library_rules($agency);
+    }
+    return $part_of[$agency][$rule];
+  }
+ 
+  /** \brief Do a solr search and return id's matching the ones in queries
+   * @param $queries array
+   * @retval array
+   */
+  private function get_solr($queries) {
+    $ret = array();
+    $solr_uri = sprintf($this->config->get_value('solr_uri', 'setup'), urlencode(implode(' OR ', $queries)));
+    $json = $this->curl->get($solr_uri);
+    $curl_status = $this->curl->get_status();
+    if ($curl_status['http_code'] !== 200) {
+      verbose::log(ERROR, 'OpenHoldings:: fetch from solr http code: ' . $curl_status['http_code'] .
+                          ' error: "' . $curl_status['error'] .
+                          '" for: ' . $curl_status['url']);
+      return $ret;
+    }
+
+    $res = json_decode($json);
+    
+    foreach ($res->response->docs as $doc) {
+      foreach ($doc->{'rec.id'} as $id) {
+        if ($queries[$id]) {
+          $ret[$id] = true;
+        }
+      }
+    }
+    return $ret;
   }
 }
 
