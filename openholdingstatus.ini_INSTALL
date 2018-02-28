@@ -11,7 +11,7 @@
 ;version
 ; Note that the version is used as part of the cache key, so do not run 2 versions of the service with identical
 ; version name, unless you specificly want them to share cache
-version = 2.2
+version = 3.0
 
 ; set only_https to accept https call only
 ;only_https = 1
@@ -87,8 +87,17 @@ verbose = WARNING+ERROR+FATAL+STAT+TIMER+TRACE+DEBUG+Z3950+OCI
 ols_get_holdings = http://some.server.dk:9080/holdings-service/getAllHoldings?requestOrderBib=%s&pid=%s
 
 ; --------------
-; url to get request_order sequence from openAgency
-agency_request_order = http://some_open_agency.server.dk/?action=requestOrder&agencyId=%s
+; url to get things from openAgency
+agency[base_uri] = https://some_openagency.server.dk//
+agency[libraryRules] = ?action=libraryRules&agencyId=%s&trackingId=%s
+agency[libraryType] = ?action=libraryTypeList&&outputType=json&trackingId=%s
+agency[requestOrder] = ?action=requestOrder&agencyId=%s&trackingId=%s
+agency[cache_host] = localhost
+agency[cache_port] = 11211
+agency[cache_expire] = 3600
+agency[timeout] = 20
+
+
 ; url to get server information from openAgency
 agency_server_information = http://some_open_agency.server.dk/?action=service&service=serverInformation&agencyId=%s
 
@@ -99,6 +108,11 @@ agency_server_information = http://some_open_agency.server.dk/?action=service&se
 ; --------------
 ; for testing purposes
 ;use_test_iso20775_replies = 1
+
+; --------------
+; solr - url to solr to for checking excludeFromUnionCatalogue
+; like solr_uri = http://cisterne-solr:8983/solr/cisterne-corepo-searcher/select?defType=edismax&wt=json&rows=9999&fl=fedoraPid,rec.id&q=%s
+solr_uri = http://some-solr-server/solr/some-solr-core/select?defType=edismax&wt=json&rows=9999&fl=fedoraPid,rec.id&q=%s
 
 ; ==============
 
@@ -162,6 +176,7 @@ action[localisations][authentication][] = groupIdAut
 action[localisations][authentication][] = passwordAut
 action[localisations][authentication][] = userIdAut
 action[localisations][] = agencyId
+action[localisations][] = role
 action[localisations][] = pid
 action[localisations][] = mergePids
 action[localisations][] = callback
