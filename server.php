@@ -209,7 +209,7 @@ class openHoldings extends webServiceServer {
         foreach ($holds['pids'] as $pid)
           $one_pid->pid[]->_value = $pid;
         if (isset($holds['holds'])) {
-          foreach ($holds['holds'] as $hold) {
+          foreach ($holds['holds'] as &$hold) {
             $agency->localisationPid ->_value = $hold['fedoraPid'];
             $agency->agencyId->_value = $hold['agencyId'];
             if ($hold['note']) $agency->note->_value = $hold['note'];
