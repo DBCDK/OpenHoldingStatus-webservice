@@ -162,22 +162,22 @@ class openHoldings extends webServiceServer {
     if ($param->role->_value == 'bibdk') {
       $check_in_solr = array();
       if (is_array($h_arr)) {
-        foreach ($h_arr as &$holds) {
+        foreach ($h_arr as $hs_idx => $holds) {
           if (isset($holds['holds'])) {
-            foreach ($holds['holds'] as $h_idx => &$hold) {
+            foreach ($holds['holds'] as $h_idx => $hold) {
               $bib_type = self::bib_type($hold['agencyId']);
               switch ($bib_type) {
                 case 'Folkebibliotek':
                   if (self::id_length($hold['fedoraPid']) == 9) {
-                    unset($holds['holds'][$h_idx]);
+                    unset($h_arr[$hs_idx]['holds'][$h_idx]);
                   }
                   break;
                 case 'Skolebibliotek':
-                  unset($holds['holds'][$h_idx]);
+                  unset($h_arr[$hs_idx]['holds'][$h_idx]);
                   break;
                 default:
                   if (self::library_rule($hold['agencyId'], 'part_of_bibliotek_dk') !== TRUE) {
-                    unset($holds['holds'][$h_idx]);
+                    unset($h_arr[$hs_idx]['holds'][$h_idx]);
                   } 
                   else {
                     $ident = $hold['localIdentifier'] . '|' . $hold['agencyId'];
@@ -191,12 +191,12 @@ class openHoldings extends webServiceServer {
 
       if ($check_in_solr) {
         $solr_res = self::get_solr($check_in_solr);
-        foreach ($h_arr as &$holds) {
+        foreach ($h_arr as $hs_idx => $holds) {
           if (isset($holds['holds'])) {
-            foreach ($holds['holds'] as $h_idx => &$hold) {
+            foreach ($holds['holds'] as $h_idx => $hold) {
               $ident = $hold['localIdentifier'] . '|' . $hold['agencyId'];
               if ($solr_res[$ident]) {
-                unset($holds['holds'][$h_idx]);
+                unset($h_arr[$hs_idx]['holds'][$h_idx]);
               }
             }
           }
@@ -209,7 +209,7 @@ class openHoldings extends webServiceServer {
         foreach ($holds['pids'] as $pid)
           $one_pid->pid[]->_value = $pid;
         if (isset($holds['holds'])) {
-          foreach ($holds['holds'] as &$hold) {
+          foreach ($holds['holds'] as $hold) {
             $agency->localisationPid ->_value = $hold['fedoraPid'];
             $agency->agencyId->_value = $hold['agencyId'];
             if ($hold['note']) $agency->note->_value = $hold['note'];
