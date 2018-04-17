@@ -160,7 +160,7 @@ class openHoldings extends webServiceServer {
     }
 
     if ($param->role->_value == 'bibdk') {
-      $check_in_solr = array();
+      $check_exclude_in_solr = array();
       if (is_array($h_arr)) {
         foreach ($h_arr as $hs_idx => $holds) {
           if (isset($holds['holds'])) {
@@ -181,7 +181,7 @@ class openHoldings extends webServiceServer {
                   } 
                   else {
                     $ident = $hold['localIdentifier'] . '|' . $hold['agencyId'];
-                    $check_in_solr[$ident] = '(rec.id:' . $ident . ' AND rec.excludeFromUnionCatalogue:1)';
+                    $check_exclude_in_solr[$ident] = $ident;
                   }
               }
             }
@@ -189,8 +189,8 @@ class openHoldings extends webServiceServer {
         }
       }
 
-      if ($check_in_solr) {
-        $solr_res = self::get_solr($check_in_solr);
+      if ($check_exclude_in_solr) {
+        $solr_res = self::get_solr('rec.id:(' . implode(' OR ', $check_exclude_in_solr) . ') AND rec.excludeFromUnionCatalogue:1');
         foreach ($h_arr as $hs_idx => $holds) {
           if (isset($holds['holds'])) {
             foreach ($holds['holds'] as $h_idx => $hold) {
@@ -885,12 +885,12 @@ class openHoldings extends webServiceServer {
   }
  
   /** \brief Do a solr search and return id's matching the ones in queries
-   * @param $queries array
+   * @param $query string
    * @retval array
    */
-  private function get_solr($queries) {
+  private function get_solr($query) {
     $ret = array();
-    $solr_uri = sprintf($this->config->get_value('solr_uri', 'setup'), urlencode(implode(' OR ', $queries)));
+    $solr_uri = sprintf($this->config->get_value('solr_uri', 'setup'), urlencode($query));
     $json = $this->curl->get($solr_uri);
     $curl_status = $this->curl->get_status();
     if ($curl_status['http_code'] !== 200) {
